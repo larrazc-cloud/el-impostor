@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Reparte en secreto la palabra y el impostor pasandoos un solo movil.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#F2F5F3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0D1312" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230F6C6A'/%3E%3Ctext x='16' y='23' font-size='20' font-family='Georgia,serif' font-weight='bold' text-anchor='middle' fill='%23fff'%3E%3F%3C/text%3E%3C/svg%3E">
+<style>
+  /* Base equivalente a la que anade claude.ai al publicar un artifact */
+  :root {
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  body { margin: 0; font: 14px system-ui, -apple-system, sans-serif; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+</style>
+<title>El Impostor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --ground: #F2F5F3;
+    --surface: #FFFFFF;
+    --ink: #16211F;
+    --ink-soft: #5D6C68;
+    --ink-faint: #8A9995;
+    --line: #DCE5E1;
+    --accent: #0F6C6A;
+    --accent-ink: #FFFFFF;
+    --accent-soft: #E2EFEC;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0D1312;
+      --surface: #161F1D;
+      --ink: #E9F1EE;
+      --ink-soft: #94A6A1;
+      --ink-faint: #6D7E79;
+      --line: #25322F;
+      --accent: #56C3B5;
+      --accent-ink: #06201D;
+      --accent-soft: #1A2C29;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0D1312;
+    --surface: #161F1D;
+    --ink: #E9F1EE;
+    --ink-soft: #94A6A1;
+    --ink-faint: #6D7E79;
+    --line: #25322F;
+    --accent: #56C3B5;
+    --accent-ink: #06201D;
+    --accent-soft: #1A2C29;
+    color-scheme: dark;
+  }
+
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+  }
+  * { box-sizing: border-box; }
+
+  #app {
+    min-height: 100%;
+    max-width: 520px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    display: flex;
+    flex-direction: column;
+  }
+  .screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding-block: 24px 20px;
+    animation: enter .2s ease-out both;
+  }
+  @keyframes enter { from { opacity: 0; transform: translateX(12px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .screen { animation: none; }
+  }
+
+  .eyebrow {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0;
+  }
+  .display {
+    font-family: "Bricolage Grotesque", "IBM Plex Sans", system-ui, sans-serif;
+    font-weight: 800;
+    line-height: 1.02;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0;
+  }
+  .lede { color: var(--ink-soft); margin: 0; line-height: 1.5; }
+  .spacer { flex: 1; min-height: 16px; }
+
+  /* --- buttons --- */
+  .btn {
+    font: inherit;
+    font-weight: 600;
+    width: 100%;
+    min-height: 56px;
+    border-radius: 14px;
+    border: 1px solid transparent;
+    background: var(--accent);
+    color: var(--accent-ink);
+    cursor: pointer;
+    padding: 8px 16px;
+  }
+  .btn:active { transform: scale(.99); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border-color: var(--line);
+    min-height: 48px;
+    font-weight: 500;
+  }
+  .btn:focus-visible, .chip:focus-visible, .step:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .actions { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+
+  /* --- setup --- */
+  .title-block { display: flex; flex-direction: column; gap: 8px; margin-bottom: 28px; }
+  .title-block .display { font-size: clamp(38px, 12vw, 52px); }
+
+  .field { display: flex; flex-direction: column; gap: 12px; margin-bottom: 28px; }
+  .field-label {
+    font-size: 13px; font-weight: 600; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--ink-faint);
+  }
+  .counter {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 16px; padding: 10px 14px;
+  }
+  .step {
+    width: 48px; height: 48px; flex: none; border-radius: 12px;
+    border: 1px solid var(--line); background: var(--ground);
+    color: var(--ink); font-size: 26px; line-height: 1; cursor: pointer;
+  }
+  .step[disabled] { opacity: .35; cursor: default; }
+  .count-value {
+    font-family: "Bricolage Grotesque", sans-serif; font-weight: 800;
+    font-size: 32px; font-variant-numeric: tabular-nums;
+  }
+  .count-value span { font: 500 14px "IBM Plex Sans", sans-serif; color: var(--ink-soft); margin-left: 6px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font: inherit; font-size: 15px; font-weight: 500;
+    padding: 10px 14px; min-height: 44px;
+    border-radius: 999px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .chip[aria-checked="true"] {
+    background: var(--accent); border-color: var(--accent);
+    color: var(--accent-ink); font-weight: 600;
+  }
+
+  /* --- pass --- */
+  .center { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+  .pass-name { font-size: clamp(40px, 15vw, 64px); }
+  .pass-lede { font-size: 19px; }
+
+  /* --- card --- */
+  .card-word { font-size: clamp(34px, 12.5vw, 60px); }
+  .card-note { color: var(--ink-soft); font-size: 16px; line-height: 1.5; margin: 14px 0 0; }
+  .card-progress {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+    color: var(--ink-faint); letter-spacing: .04em;
+  }
+
+  /* --- round --- */
+  .order-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .order-list li {
+    display: flex; align-items: center; gap: 14px;
+    padding: 13px 4px; border-bottom: 1px solid var(--line);
+    font-size: 18px;
+  }
+  .order-list li:last-child { border-bottom: none; }
+  .order-list .pos {
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+    color: var(--accent); width: 22px; font-variant-numeric: tabular-nums;
+  }
+  .rule {
+    background: var(--accent-soft); color: var(--ink);
+    border-radius: 14px; padding: 14px 16px;
+    font-size: 15px; line-height: 1.45; margin-top: 20px;
+  }
+  .round-cat { font-size: clamp(28px, 9vw, 38px); margin-bottom: 4px; }
+</style>
+
+</head>
+<body>
+<div id="app">
+
+  <!-- 1. Jugadores y categoría -->
+  <section class="screen" id="screen-setup">
+    <div class="title-block">
+      <p class="eyebrow">Un móvil, una palabra, un mentiroso</p>
+      <h1 class="display">El Impostor</h1>
+      <p class="lede">Todos veis la misma palabra menos uno. Id pasándoos este móvil.</p>
+    </div>
+
+    <div class="field">
+      <span class="field-label" id="label-count">Cuántos sois</span>
+      <div class="counter">
+        <button class="step" id="count-minus" type="button" aria-label="Un jugador menos">−</button>
+        <span class="count-value" id="count-value" aria-live="polite" aria-labelledby="label-count">5<span>jugadores</span></span>
+        <button class="step" id="count-plus" type="button" aria-label="Un jugador más">+</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <span class="field-label" id="label-cat">Categoría</span>
+      <div class="chips" id="cat-chips" role="radiogroup" aria-labelledby="label-cat"></div>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="btn" id="btn-start" type="button">Empezar ronda</button>
+    </div>
+  </section>
+
+  <!-- 2. Pasar el móvil -->
+  <section class="screen" id="screen-pass" hidden>
+    <p class="card-progress" id="pass-progress">Jugador 1 de 5</p>
+    <div class="center">
+      <p class="lede pass-lede">Pásale el móvil al</p>
+      <h2 class="display pass-name" id="pass-name">Jugador 1</h2>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-iam" type="button">Soy el Jugador 1</button>
+    </div>
+  </section>
+
+  <!-- 3. Tu palabra -->
+  <section class="screen" id="screen-card" hidden>
+    <p class="eyebrow" id="card-eyebrow">Animales</p>
+    <div class="center">
+      <h2 class="display card-word" id="card-word" aria-live="polite">—</h2>
+      <p class="card-note" id="card-note" hidden></p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-seen" type="button">Ya la he visto</button>
+    </div>
+  </section>
+
+  <!-- 4. Ronda en marcha -->
+  <section class="screen" id="screen-round" hidden>
+    <p class="eyebrow">La ronda está en marcha</p>
+    <h2 class="display round-cat" id="round-cat">Animales</h2>
+    <p class="lede">Orden para dar pistas:</p>
+    <ol class="order-list" id="order-list"></ol>
+    <p class="rule">Una sola palabra por turno, y que no valga para cualquier cosa. Cuando toque, votad a la de tres.</p>
+    <div class="spacer"></div>
+    <div class="actions">
+      <button class="btn" id="btn-again" type="button">Otra ronda</button>
+      <button class="btn btn-ghost" id="btn-reset" type="button">Cambiar jugadores</button>
+    </div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var CATS = [
+    { key: "futbol", name: "Jugadores de Fútbol", words: [
+      "Messi","Cristiano Ronaldo","Maradona","Pelé","Zidane","Ronaldinho","Ronaldo Nazário","Iniesta","Xavi","Casillas",
+      "Raúl","Puyol","Sergio Ramos","Piqué","Busquets","David Villa","Fernando Torres","David Silva","Cesc Fàbregas","Xabi Alonso",
+      "Pedri","Gavi","Rodri","Lamine Yamal","Nico Williams","Dani Olmo","Ferran Torres","Morata","Carvajal","Unai Simón",
+      "Oyarzabal","Mikel Merino","Isco","Koke","Marcos Llorente","Griezmann","Benzema","Mbappé","Haaland","Neymar",
+      "Vinicius","Rodrygo","Bellingham","Modric","Kroos","Courtois","Lewandowski","Ter Stegen","De Bruyne","Salah",
+      "Harry Kane","Son","Van Dijk","Lukaku","Dembélé","Luis Suárez","Cavani","Di María","Higuaín","Agüero",
+      "Tevez","Riquelme","Batistuta","Hierro","Guardiola","Luis Enrique","Butragueño","Di Stéfano","Puskás","Cruyff",
+      "Beckenbauer","Platini","Van Basten","Gullit","Romário","Rivaldo","Roberto Carlos","Cafu","Kaká","Figo",
+      "Guti","Beckham","Gerrard","Lampard","Scholes","Thierry Henry","Drogba","Totti","Del Piero","Roberto Baggio",
+      "Maldini","Buffon","Pirlo","Cannavaro","Klose","Thomas Müller","Neuer","Schweinsteiger","Ibrahimović","Zamora",
+      "Iker Muniain","Aitana Bonmatí","Alexia Putellas","Jenni Hermoso","Amancio"
+    ]},
+    { key: "famosos", name: "Famosos", words: [
+      "Charlot","Marilyn Monroe","Einstein","Picasso","Dalí","Frida Kahlo","Cervantes","Shakespeare","Napoleón","Cleopatra",
+      "Julio César","Cristóbal Colón","Gandhi","Nelson Mandela","Marie Curie","Newton","Darwin","Leonardo da Vinci","Miguel Ángel","Goya",
+      "Velázquez","Van Gogh","Steve Jobs","Bill Gates","Elon Musk","Mark Zuckerberg","Jeff Bezos","Amancio Ortega","el Papa","el Rey Felipe VI",
+      "la Reina Letizia","Isabel II","Lady Di","Obama","Trump","Kennedy","Churchill","Martin Luther King","Che Guevara","Bruce Lee",
+      "Jackie Chan","Tom Cruise","Brad Pitt","Angelina Jolie","Leonardo DiCaprio","Scarlett Johansson","Will Smith","Denzel Washington","Morgan Freeman","Robert De Niro",
+      "Al Pacino","Meryl Streep","Julia Roberts","Jennifer Aniston","Keanu Reeves","Johnny Depp","Emma Watson","Daniel Radcliffe","Dwayne Johnson","Arnold Schwarzenegger",
+      "Sylvester Stallone","Antonio Banderas","Penélope Cruz","Javier Bardem","Pedro Almodóvar","Santiago Segura","Chiquito de la Calzada","José Mota","Andreu Buenafuente","Pablo Motos",
+      "Jorge Javier Vázquez","Belén Esteban","Ana Rosa Quintana","Matías Prats","Jordi Hurtado","Ibai Llanos","El Rubius","AuronPlay","Rafa Nadal","Carlos Alcaraz",
+      "Pau Gasol","Fernando Alonso","Carlos Sainz","Marc Márquez","Ángel Nieto","Induráin","Alberto Contador","Michael Jordan","LeBron James","Usain Bolt",
+      "Muhammad Ali","Tiger Woods","Roger Federer","Serena Williams","Lewis Hamilton","Schumacher","Valentino Rossi","Mireia Belmonte","Carolina Marín","Ferran Adrià",
+      "Karlos Arguiñano","Salvador Dalí","Rosa Montero","Arturo Pérez-Reverte","Julio Verne"
+    ]},
+    { key: "cine", name: "Películas y Series", words: [
+      "Titanic","El Padrino","Tiburón","Star Wars","Jurassic Park","El Rey León","Matrix","Gladiator","Forrest Gump","Pulp Fiction",
+      "El Señor de los Anillos","Harry Potter","Piratas del Caribe","Los Vengadores","Batman","Spiderman","Superman","Indiana Jones","Regreso al Futuro","E.T.",
+      "Terminator","Alien","Rocky","Grease","Dirty Dancing","Pretty Woman","Ghost","Top Gun","Braveheart","Troya",
+      "300","Mad Max","Avatar","Interstellar","Origen","El Club de la Lucha","Seven","El Silencio de los Corderos","Psicosis","El Resplandor",
+      "El Exorcista","It","Scream","Parásitos","Joker","Deadpool","Frozen","Toy Story","Buscando a Nemo","Shrek",
+      "Los Increíbles","Up","Coco","Ratatouille","Monstruos S.A.","La Sirenita","Aladdín","Bambi","Blancanieves","Cenicienta",
+      "Mulán","Tarzán","El Libro de la Selva","Madagascar","Ice Age","Los Minions","Torrente","Ocho Apellidos Vascos","Los Otros","El Laberinto del Fauno",
+      "Mar Adentro","Volver","Campeones","Tadeo Jones","Juego de Tronos","Breaking Bad","La Casa de Papel","Stranger Things","Friends","Los Simpson",
+      "Padre de Familia","South Park","Futurama","Aquí no hay quien viva","La que se avecina","Cuéntame","Física o Química","El Internado","Élite","Vis a Vis",
+      "Narcos","The Walking Dead","Black Mirror","The Crown","Chernobyl","Perdidos","Prison Break","House","Anatomía de Grey","CSI",
+      "Bob Esponja","Dragon Ball","Pokémon","Los Serrano","El Hormiguero"
+    ]},
+    { key: "marcas", name: "Marcas", words: [
+      "Coca-Cola","Pepsi","Nike","Adidas","Puma","Zara","H&M","Mango","Primark","Decathlon",
+      "El Corte Inglés","Mercadona","Lidl","Carrefour","Ikea","Apple","Samsung","Google","Microsoft","Amazon",
+      "Netflix","Spotify","YouTube","Instagram","WhatsApp","TikTok","Facebook","Sony","LG","Philips",
+      "Nintendo","PlayStation","Xbox","Lego","Playmobil","Barbie","Ferrari","Lamborghini","Porsche","BMW",
+      "Mercedes","Audi","Volkswagen","Seat","Renault","Peugeot","Citroën","Toyota","Honda","Ford",
+      "Tesla","Harley-Davidson","Vespa","Michelin","Repsol","Iberdrola","Movistar","Vodafone","Orange","Iberia",
+      "Ryanair","Renfe","Booking","Airbnb","Uber","Glovo","PayPal","Visa","Mastercard","McDonald's",
+      "Burger King","KFC","Telepizza","Domino's","Starbucks","Nespresso","Nestlé","Danone","Kellogg's","Nutella",
+      "Kinder","Chupa Chups","Haribo","Oreo","Pringles","Doritos","Lay's","Heineken","Mahou","Estrella Galicia",
+      "Cruzcampo","Fanta","Red Bull","Aquarius","ColaCao","Nesquik","Gillette","Nivea","Dove","Chanel",
+      "Dior","Gucci","Louis Vuitton","Rolex","Casio","Ray-Ban","Converse","Vans","New Balance","Reebok",
+      "Levi's","Bershka","Pull&Bear","Stradivarius","Desigual"
+    ]},
+    { key: "lugares", name: "Lugares del Mundo", words: [
+      "Madrid","Barcelona","Sevilla","Valencia","Bilbao","Zaragoza","Granada","Toledo","Santiago de Compostela","San Sebastián",
+      "Málaga","Córdoba","Salamanca","Segovia","Cuenca","Ibiza","Mallorca","Tenerife","Gran Canaria","Benidorm",
+      "París","Londres","Roma","Berlín","Lisboa","Ámsterdam","Praga","Viena","Budapest","Venecia",
+      "Florencia","Milán","Nápoles","Atenas","Estambul","Moscú","Dublín","Edimburgo","Bruselas","Copenhague",
+      "Estocolmo","Oslo","Helsinki","Varsovia","Zúrich","Mónaco","Nueva York","Los Ángeles","Las Vegas","Miami",
+      "Chicago","San Francisco","Washington","Toronto","Ciudad de México","Cancún","La Habana","Bogotá","Lima","Cusco",
+      "Machu Picchu","Buenos Aires","Río de Janeiro","São Paulo","Santiago de Chile","El Cairo","Marrakech","Casablanca","Ciudad del Cabo","Nairobi",
+      "Dubái","Tokio","Kioto","Pekín","Shanghái","Hong Kong","Seúl","Bangkok","Singapur","Bali",
+      "Sídney","Melbourne","Nueva Delhi","Bombay","Jerusalén","la Torre Eiffel","el Coliseo","la Sagrada Familia","la Alhambra","el Big Ben",
+      "la Estatua de la Libertad","la Muralla China","el Taj Mahal","las Pirámides de Giza","las Cataratas del Niágara","el Gran Cañón","el Everest","el Amazonas","el Sáhara","el Polo Norte",
+      "Hawái","Islandia","Groenlandia","el Vaticano","Times Square"
+    ]},
+    { key: "musica", name: "Música", words: [
+      "Rosalía","Bad Bunny","Shakira","Beyoncé","Rihanna","Madonna","Michael Jackson","Elvis Presley","The Beatles","The Rolling Stones",
+      "Queen","Pink Floyd","Led Zeppelin","AC/DC","Metallica","Nirvana","Guns N' Roses","U2","Coldplay","Radiohead",
+      "Oasis","The Police","Bon Jovi","Aerosmith","Red Hot Chili Peppers","Green Day","Linkin Park","Muse","Arctic Monkeys","Imagine Dragons",
+      "Maroon 5","Bruno Mars","Ed Sheeran","Justin Bieber","Taylor Swift","Lady Gaga","Katy Perry","Adele","Amy Winehouse","Dua Lipa",
+      "Billie Eilish","Ariana Grande","Miley Cyrus","Britney Spears","Christina Aguilera","Whitney Houston","Mariah Carey","Céline Dion","Tina Turner","Aretha Franklin",
+      "Stevie Wonder","Prince","David Bowie","Elton John","Freddie Mercury","Bob Marley","Bob Dylan","Johnny Cash","Frank Sinatra","Louis Armstrong",
+      "Eminem","50 Cent","Snoop Dogg","Kanye West","Drake","Jay-Z","Tupac","Daddy Yankee","Don Omar","Maluma",
+      "J Balvin","Karol G","Ozuna","Enrique Iglesias","Julio Iglesias","Alejandro Sanz","David Bisbal","Pablo Alborán","Melendi","Estopa",
+      "Extremoduro","Héroes del Silencio","Mecano","Hombres G","La Oreja de Van Gogh","El Canto del Loco","Fito y Fitipaldis","Marea","Los Planetas","Vetusta Morla",
+      "Amaral","Manu Chao","Joaquín Sabina","Serrat","Camarón","Paco de Lucía","Raphael","Rocío Jurado","Lola Flores","Nino Bravo",
+      "C. Tangana","Aitana","Quevedo","Camilo Sesto","Antonio Orozco"
+    ]},
+    { key: "animales", name: "Animales", words: [
+      "Perro","Gato","Caballo","Vaca","Cerdo","Oveja","Cabra","Gallina","Gallo","Pato",
+      "Ganso","Pavo","Conejo","Ratón","Rata","Hámster","Cobaya","Hurón","Burro","Toro",
+      "León","Tigre","Leopardo","Guepardo","Pantera","Jaguar","Lince","Oso","Oso polar","Panda",
+      "Lobo","Zorro","Hiena","Elefante","Jirafa","Cebra","Rinoceronte","Hipopótamo","Búfalo","Gacela",
+      "Ciervo","Corzo","Alce","Reno","Jabalí","Erizo","Topo","Ardilla","Castor","Nutria",
+      "Mapache","Canguro","Koala","Ornitorrinco","Perezoso","Armadillo","Mono","Gorila","Chimpancé","Orangután",
+      "Lémur","Murciélago","Ballena","Delfín","Orca","Foca","Morsa","León marino","Tiburón","Pez espada",
+      "Atún","Sardina","Salmón","Trucha","Pulpo","Calamar","Medusa","Cangrejo","Langosta","Gamba",
+      "Estrella de mar","Caballito de mar","Tortuga","Cocodrilo","Caimán","Serpiente","Cobra","Pitón","Lagarto","Camaleón",
+      "Iguana","Rana","Sapo","Salamandra","Águila","Halcón","Búho","Lechuza","Cuervo","Paloma",
+      "Gorrión","Golondrina","Loro","Tucán","Flamenco","Cigüeña","Garza","Pingüino","Avestruz","Pavo real",
+      "Colibrí","Abeja","Avispa","Hormiga","Mosca","Mosquito","Mariposa","Libélula","Escarabajo","Araña",
+      "Escorpión","Ciempiés","Caracol","Babosa","Lombriz","Camello","Dromedario","Llama","Bisonte","Suricata"
+    ]},
+    { key: "verbos", name: "Verbos", words: [
+      "Correr","Saltar","Nadar","Volar","Bailar","Cantar","Cocinar","Comer","Beber","Dormir",
+      "Roncar","Soñar","Despertar","Ducharse","Peinarse","Afeitarse","Vestirse","Conducir","Aparcar","Frenar",
+      "Pedalear","Remar","Esquiar","Patinar","Escalar","Bucear","Pescar","Cazar","Sembrar","Regar",
+      "Podar","Barrer","Fregar","Planchar","Coser","Tender","Pintar","Dibujar","Escribir","Leer",
+      "Estudiar","Enseñar","Contar","Sumar","Medir","Pesar","Cortar","Pegar","Clavar","Atornillar",
+      "Martillear","Soldar","Taladrar","Construir","Derribar","Excavar","Empujar","Arrastrar","Levantar","Cargar",
+      "Lanzar","Atrapar","Golpear","Chutar","Abrazar","Besar","Saludar","Aplaudir","Silbar","Gritar",
+      "Susurrar","Reír","Llorar","Estornudar","Toser","Bostezar","Respirar","Suspirar","Sonreír","Guiñar",
+      "Señalar","Escuchar","Mirar","Buscar","Esconder","Perseguir","Escapar","Trepar","Gatear","Tropezar",
+      "Caerse","Resbalar","Girar","Agacharse","Estirarse","Sentarse","Aterrizar","Despegar","Navegar","Acampar",
+      "Viajar","Comprar","Vender","Pagar","Cobrar","Votar","Firmar","Llamar","Fotografiar","Grabar",
+      "Apagar","Encender","Congelar","Hervir","Freír","Amasar","Masticar","Tragar","Abanicarse","Trotar"
+    ]},
+    { key: "sustantivos", name: "Sustantivos", words: [
+      "Paraguas","Silla","Mesa","Sofá","Cama","Almohada","Manta","Lámpara","Espejo","Reloj",
+      "Despertador","Llave","Candado","Puerta","Ventana","Escalera","Ascensor","Alfombra","Cortina","Armario",
+      "Cajón","Estantería","Cuadro","Jarrón","Vela","Cerilla","Mechero","Tijeras","Cuchillo","Tenedor",
+      "Cuchara","Plato","Vaso","Taza","Botella","Sartén","Olla","Nevera","Horno","Microondas",
+      "Lavadora","Aspiradora","Escoba","Fregona","Cubo","Esponja","Jabón","Toalla","Cepillo de dientes","Peine",
+      "Secador","Ordenador","Teclado","Pantalla","Móvil","Cargador","Auriculares","Altavoz","Televisión","Mando a distancia",
+      "Cámara","Impresora","Bombilla","Enchufe","Pila","Linterna","Mochila","Maleta","Cartera","Monedero",
+      "Gafas","Sombrero","Gorra","Bufanda","Guantes","Abrigo","Camiseta","Pantalón","Falda","Vestido",
+      "Calcetines","Zapatos","Botas","Zapatillas","Cinturón","Corbata","Pijama","Bañador","Bicicleta","Coche",
+      "Moto","Autobús","Tren","Avión","Barco","Helicóptero","Patinete","Monopatín","Cohete","Globo",
+      "Cometa","Pelota","Raqueta","Portería","Canasta","Guitarra","Piano","Batería","Violín","Trompeta",
+      "Flauta","Tambor","Micrófono","Libro","Periódico","Revista","Cuaderno","Bolígrafo","Lápiz","Goma",
+      "Regla","Grapadora","Pegamento","Sello","Sobre","Buzón","Semáforo","Farola","Papelera","Banco"
+    ]}
+  ];
+
+  var MIN_PLAYERS = 3, MAX_PLAYERS = 12;
+  var STORE_PREFS = "impostor.prefs", STORE_USED = "impostor.used";
+
+  var state = {
+    n: 5,
+    cat: "animales",
+    word: "",
+    catName: "",
+    impostor: 1,
+    order: [],
+    idx: 0,
+    screen: "setup"
+  };
+
+  /* ---------- almacenamiento local, siempre opcional ---------- */
+  function load(key, fallback) {
+    try {
+      var raw = window.localStorage.getItem(key);
+      return raw ? JSON.parse(raw) : fallback;
+    } catch (e) { return fallback; }
+  }
+  function save(key, value) {
+    try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (e) {}
+  }
+
+  /* ---------- palabras ---------- */
+  function catByKey(key) {
+    for (var i = 0; i < CATS.length; i++) if (CATS[i].key === key) return CATS[i];
+    return null;
+  }
+  function poolFor(key) {
+    if (key === "mezcla") {
+      var all = [];
+      for (var i = 0; i < CATS.length; i++) all = all.concat(CATS[i].words);
+      return all;
+    }
+    var c = catByKey(key);
+    return c ? c.words : [];
+  }
+  function catLabel(key) {
+    if (key === "mezcla") return "Mezcla";
+    var c = catByKey(key);
+    return c ? c.name : "";
+  }
+  function pickWord(key) {
+    var pool = poolFor(key);
+    var used = load(STORE_USED, {}) || {};
+    var seen = used[key] || [];
+    var available = pool.filter(function (w) { return seen.indexOf(w) === -1; });
+    if (!available.length) { available = pool; seen = []; }
+    var word = available[Math.floor(Math.random() * available.length)];
+    seen.push(word);
+    used[key] = seen;
+    save(STORE_USED, used);
+    return word;
+  }
+  function shuffled(n) {
+    var a = [];
+    for (var i = 1; i <= n; i++) a.push(i);
+    for (var j = a.length - 1; j > 0; j--) {
+      var k = Math.floor(Math.random() * (j + 1));
+      var t = a[j]; a[j] = a[k]; a[k] = t;
+    }
+    return a;
+  }
+
+  /* ---------- pantallas ---------- */
+  var el = {};
+  ["screen-setup","screen-pass","screen-card","screen-round","count-value","count-minus","count-plus",
+   "cat-chips","btn-start","pass-name","pass-progress","btn-iam","card-eyebrow","card-word","card-note",
+   "btn-seen","round-cat","order-list","btn-again","btn-reset"].forEach(function (id) {
+    el[id] = document.getElementById(id);
+  });
+
+  function show(name) {
+    state.screen = name;
+    ["setup","pass","card","round"].forEach(function (s) {
+      el["screen-" + s].hidden = (s !== name);
+    });
+    window.scrollTo(0, 0);
+  }
+
+  function renderSetup() {
+    el["count-value"].innerHTML = state.n + "<span>jugadores</span>";
+    el["count-minus"].disabled = state.n <= MIN_PLAYERS;
+    el["count-plus"].disabled = state.n >= MAX_PLAYERS;
+    var chips = el["cat-chips"].querySelectorAll(".chip");
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].setAttribute("aria-checked", chips[i].dataset.key === state.cat ? "true" : "false");
+    }
+  }
+
+  function buildChips() {
+    var keys = CATS.map(function (c) { return { key: c.key, name: c.name }; });
+    keys.push({ key: "mezcla", name: "Mezcla" });
+    keys.forEach(function (c) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "chip";
+      b.id = "cat-" + c.key;
+      b.dataset.key = c.key;
+      b.setAttribute("role", "radio");
+      b.setAttribute("aria-checked", "false");
+      b.textContent = c.name;
+      b.addEventListener("click", function () {
+        state.cat = c.key;
+        save(STORE_PREFS, { n: state.n, cat: state.cat });
+        renderSetup();
+      });
+      el["cat-chips"].appendChild(b);
+    });
+  }
+
+  function renderPass() {
+    el["pass-name"].textContent = "Jugador " + (state.idx + 1);
+    el["pass-progress"].textContent = "Jugador " + (state.idx + 1) + " de " + state.n;
+    el["btn-iam"].textContent = "Soy el Jugador " + (state.idx + 1);
+  }
+
+  function renderCard() {
+    var isImpostor = (state.idx + 1) === state.impostor;
+    el["card-eyebrow"].textContent = state.catName;
+    if (isImpostor) {
+      el["card-word"].textContent = "Eres el impostor";
+      el["card-note"].textContent = "No conoces la palabra. Solo sabes la categoría: " + state.catName.toLowerCase() + ". Escucha y disimula.";
+      el["card-note"].hidden = false;
+    } else {
+      el["card-word"].textContent = state.word;
+      el["card-note"].hidden = true;
+    }
+    el["btn-seen"].textContent = (state.idx + 1 === state.n) ? "Ya la he visto, terminar" : "Ya la he visto";
+  }
+
+  function renderRound() {
+    el["round-cat"].textContent = state.catName;
+    el["order-list"].innerHTML = "";
+    state.order.forEach(function (p, i) {
+      var li = document.createElement("li");
+      var pos = document.createElement("span");
+      pos.className = "pos";
+      pos.textContent = (i + 1) + ".";
+      var nm = document.createElement("span");
+      nm.textContent = "Jugador " + p;
+      li.appendChild(pos);
+      li.appendChild(nm);
+      el["order-list"].appendChild(li);
+    });
+  }
+
+  function render() {
+    renderSetup();
+    if (state.screen === "pass") renderPass();
+    if (state.screen === "card") renderCard();
+    if (state.screen === "round") renderRound();
+    show(state.screen);
+  }
+
+  function startRound() {
+    state.word = pickWord(state.cat);
+    state.catName = catLabel(state.cat);
+    state.impostor = 1 + Math.floor(Math.random() * state.n);
+    state.order = shuffled(state.n);
+    state.idx = 0;
+    save(STORE_PREFS, { n: state.n, cat: state.cat });
+    renderPass();
+    show("pass");
+  }
+
+  /* ---------- eventos ---------- */
+  el["count-minus"].addEventListener("click", function () {
+    if (state.n > MIN_PLAYERS) { state.n--; save(STORE_PREFS, { n: state.n, cat: state.cat }); renderSetup(); }
+  });
+  el["count-plus"].addEventListener("click", function () {
+    if (state.n < MAX_PLAYERS) { state.n++; save(STORE_PREFS, { n: state.n, cat: state.cat }); renderSetup(); }
+  });
+  el["btn-start"].addEventListener("click", startRound);
+  el["btn-iam"].addEventListener("click", function () { renderCard(); show("card"); });
+  el["btn-seen"].addEventListener("click", function () {
+    state.idx++;
+    if (state.idx < state.n) { renderPass(); show("pass"); }
+    else { renderRound(); show("round"); }
+  });
+  el["btn-again"].addEventListener("click", startRound);
+  el["btn-reset"].addEventListener("click", function () { renderSetup(); show("setup"); });
+
+  /* ---------- arranque ---------- */
+  function boot(data) {
+    var prefs = load(STORE_PREFS, null);
+    if (prefs && typeof prefs.n === "number") {
+      state.n = Math.min(MAX_PLAYERS, Math.max(MIN_PLAYERS, prefs.n));
+      if (prefs.cat) state.cat = prefs.cat;
+    }
+    if (data && data.state) {
+      for (var k in data.state) if (Object.prototype.hasOwnProperty.call(data.state, k)) state[k] = data.state[k];
+    }
+    buildChips();
+    render();
+  }
+
+  try { if (window.claude && window.claude.hot && window.claude.hot.snapshot) window.claude.hot.snapshot(function () { return { state: state }; }); } catch (e) {}
+  if (window.claude && window.claude.hot && window.claude.hot.ready) window.claude.hot.ready(boot);
+  else boot((window.claude && window.claude.hot && window.claude.hot.data) || {});
+})();
+</script>
+
+</body>
+</html>
